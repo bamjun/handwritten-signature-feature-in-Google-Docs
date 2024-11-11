@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      canvas {
+        border: 1px solid #000;
+        touch-action: none;
+      }
+      #controls {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="530" height="126"></canvas>
+    <div id="controls">
+      <button onclick="clearCanvas()">지우기</button>
+      <button onclick="submitCanvas()">완료</button>
+    </div>
+    <script>
+      var canvas = document.getElementById('canvas');
+      var ctx = canvas.getContext('2d');
+      var drawing = false;
+
+      // **검정색으로 선 색상 설정**
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2; // 선의 두께 설정 (필요에 따라 조정 가능)
+
+      function getPosition(e) {
+        var rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+          return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+          };
+        } else {
+          return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+          };
+        }
+      }
+
+      function startDraw(e) {
+        e.preventDefault();
+        drawing = true;
+        ctx.beginPath();
+        var pos = getPosition(e);
+        ctx.moveTo(pos.x, pos.y);
+      }
+
+      function draw(e) {
+        if (drawing) {
+          e.preventDefault();
+          var pos = getPosition(e);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+        }
+      }
+
+      function endDraw(e) {
+        e.preventDefault();
+        drawing = false;
+      }
+
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', endDraw);
+      canvas.addEventListener('mouseout', endDraw);
+
+      canvas.addEventListener('touchstart', startDraw);
+      canvas.addEventListener('touchmove', draw);
+      canvas.addEventListener('touchend', endDraw);
+
+      function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function submitCanvas() {
+        var dataUrl = canvas.toDataURL().split(',')[1];
+        google.script.run.withSuccessHandler(function() {
+          google.script.host.close();
+        }).replaceImage(dataUrl);
+      }
+    </script>
+  </body>
+</html>
