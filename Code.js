@@ -17,13 +17,16 @@ function showImageTitles() {
   // HTML 출력 생성
   var htmlContent = "<h3>작성 목록</h3><ul>";
   imageTitles.forEach(function(title, index) {
-    htmlContent += "<li>이미지 " + (index + 1) + ": " + title + "</li>";
+    // 클릭 가능한 링크로 변경하고 onclick 이벤트 추가
+    htmlContent += "<li><a href='#' onclick='google.script.run.startDrawingByImageTitle(\"" + title + "\"); return false;'>" +
+                  "이미지 " + (index + 1) + ": " + title + "</a></li>";
   });
   htmlContent += "</ul>";
 
   // 사이드바에 표시
   var htmlOutput = HtmlService.createHtmlOutput(htmlContent)
-    .setTitle('작성 목록');
+    .setTitle('작성 목록')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   DocumentApp.getUi().showSidebar(htmlOutput);
 }
 
@@ -50,26 +53,26 @@ function initializeImages() {
   var doc = DocumentApp.getActiveDocument();
   var body = doc.getBody();
   
-  // "init" 타이틀을 가진 이미지를 찾음
-  var initImage = findImageByTitle(body, "init"); 
-
-  if (!initImage) {
-    DocumentApp.getUi().alert('타이틀이 "init"인 이미지를 찾을 수 없습니다.');
+  // 빈 캔버스 생성 및 Blob 변환
+  var blob = createEmptyCanvasBlob();
+  if (!blob) {
+    DocumentApp.getUi().alert('빈 캔버스 생성에 실패했습니다.');
     return;
   }
-
-  // "init" 이미지의 Blob 데이터 가져오기
-  var initBlob = initImage.getBlob();
   
-  // 문서 내에서 "name" 타이틀을 가진 이미지를 찾아 대체
-  replaceImagesByTitle(body, "name", initBlob);
-  replaceImagesByTitle(body, "resident-number", initBlob);
-  replaceImagesByTitle(body, "number", initBlob);
-  replaceImagesByTitle(body, "address", initBlob);
-  replaceImagesByTitle(body, "bank", initBlob);
+  // 문서 내 이미지들을 빈 캔버스로 대체
+  replaceImagesByTitle(body, "이름", blob);
+  replaceImagesByTitle(body, "주민등록번호", blob);
+  replaceImagesByTitle(body, "연락처", blob);
+  replaceImagesByTitle(body, "주소", blob);
+  replaceImagesByTitle(body, "정산계좌/예금주", blob);
 }
 
-
+function createEmptyCanvasBlob() {
+  // 10x10 크기의 빈 흰색 이미지의 base64 데이터
+  var base64Data = 'iVBORw0KGgoAAAANSUhEUgAAAhIAAAB+CAYAAABxlPi3AAAAAXNSR0IArs4c6QAABatJREFUeF7t1qERAAAIAzG6/9Ls8Dr4mhzid44AAQIECBAgEAUWd2YECBAgQIAAgRMSnoAAAQIECBDIAkIi0xkSIECAAAECQsIPECBAgAABAllASGQ6QwIECBAgQEBI+AECBAgQIEAgCwiJTGdIgAABAgQICAk/QIAAAQIECGQBIZHpDAkQIECAAAEh4QcIECBAgACBLCAkMp0hAQIECBAgICT8AAECBAgQIJAFhESmMyRAgAABAgSEhB8gQIAAAQIEsoCQyHSGBAgQIECAgJDwAwQIECBAgEAWEBKZzpAAAQIECBAQEn6AAAECBAgQyAJCItMZEiBAgAABAkLCDxAgQIAAAQJZQEhkOkMCBAgQIEBASPgBAgQIECBAIAsIiUxnSIAAAQIECAgJP0CAAAECBAhkASGR6QwJECBAgAABIeEHCBAgQIAAgSwgJDKdIQECBAgQICAk/AABAgQIECCQBYREpjMkQIAAAQIEhIQfIECAAAECBLKAkMh0hgQIECBAgICQ8AMECBAgQIBAFhASmc6QAAECBAgQEBJ+gAABAgQIEMgCQiLTGRIgQIAAAQJCwg8QIECAAAECWUBIZDpDAgQIECBAQEj4AQIECBAgQCALCIlMZ0iAAAECBAgICT9AgAABAgQIZAEhkekMCRAgQIAAASHhBwgQIECAAIEsICQynSEBAgQIECAgJPwAAQIECBAgkAWERKYzJECAAAECBISEHyBAgAABAgSygJDIdIYECBAgQICAkPADBAgQIECAQBYQEpnOkAABAgQIEBASfoAAAQIECBDIAkIi0xkSIECAAAECQsIPECBAgAABAllASGQ6QwIECBAgQEBI+AECBAgQIEAgCwiJTGdIgAABAgQICAk/QIAAAQIECGQBIZHpDAkQIECAAAEh4QcIECBAgACBLCAkMp0hAQIECBAgICT8AAECBAgQIJAFhESmMyRAgAABAgSEhB8gQIAAAQIEsoCQyHSGBAgQIECAgJDwAwQIECBAgEAWEBKZzpAAAQIECBAQEn6AAAECBAgQyAJCItMZEiBAgAABAkLCDxAgQIAAAQJZQEhkOkMCBAgQIEBASPgBAgQIECBAIAsIiUxnSIAAAQIECAgJP0CAAAECBAhkASGR6QwJECBAgAABIeEHCBAgQIAAgSwgJDKdIQECBAgQICAk/AABAgQIECCQBYREpjMkQIAAAQIEhIQfIECAAAECBLKAkMh0hgQIECBAgICQ8AMECBAgQIBAFhASmc6QAAECBAgQEBJ+gAABAgQIEMgCQiLTGRIgQIAAAQJCwg8QIECAAAECWUBIZDpDAgQIECBAQEj4AQIECBAgQCALCIlMZ0iAAAECBAgICT9AgAABAgQIZAEhkekMCRAgQIAAASHhBwgQIECAAIEsICQynSEBAgQIECAgJPwAAQIECBAgkAWERKYzJECAAAECBISEHyBAgAABAgSygJDIdIYECBAgQICAkPADBAgQIECAQBYQEpnOkAABAgQIEBASfoAAAQIECBDIAkIi0xkSIECAAAECQsIPECBAgAABAllASGQ6QwIECBAgQEBI+AECBAgQIEAgCwiJTGdIgAABAgQICAk/QIAAAQIECGQBIZHpDAkQIECAAAEh4QcIECBAgACBLCAkMp0hAQIECBAgICT8AAECBAgQIJAFhESmMyRAgAABAgSEhB8gQIAAAQIEsoCQyHSGBAgQIECAgJDwAwQIECBAgEAWEBKZzpAAAQIECBAQEn6AAAECBAgQyAJCItMZEiBAgAABAkLCDxAgQIAAAQJZQEhkOkMCBAgQIEBASPgBAgQIECBAIAsIiUxnSIAAAQIECAgJP0CAAAECBAhkASGR6QwJECBAgAABIeEHCBAgQIAAgSwgJDKdIQECBAgQICAk/AABAgQIECCQBYREpjMkQIAAAQIEHhTgAH+53HoxAAAAAElFTkSuQmCC';
+  return Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'empty.png');
+}
 
 function replaceImagesByTitle(container, targetTitle, blob) {
   var numChildren = container.getNumChildren();
@@ -122,7 +125,26 @@ function findImageByTitle(container, targetTitle) {
   return null;
 }
 
+function startDrawingByImageTitle(imageTitle) {
+  var doc = DocumentApp.getActiveDocument();
+  var body = doc.getBody();
+  
+  // 지정된 타이틀을 가진 이미지 찾기
+  var imageElement = findImageElementByTitle(body, imageTitle);
+  
+  if (imageElement) {
+    // 이미지 타이틀 저장
+    PropertiesService.getDocumentProperties().setProperty('imageTitle', imageTitle);
 
+    // 그리기 다이얼로그 표시
+    var html = HtmlService.createHtmlOutputFromFile('DrawDialog')
+      .setWidth(600)
+      .setHeight(400);
+    DocumentApp.getUi().showModalDialog(html, '그리기');
+  } else {
+    DocumentApp.getUi().alert('해당 타이틀의 이미지를 찾을 수 없습니다.');
+  }
+}
 
 function startDrawing() {
   var doc = DocumentApp.getActiveDocument();
@@ -156,6 +178,7 @@ function replaceImage(imageData) {
     var searchResult = findImageElementByTitle(body, imageTitle);
     if (searchResult) {
       var blob = Utilities.newBlob(Utilities.base64Decode(imageData), 'image/png', 'drawing.png');
+      // base64 데이터로 변환하여 alert
       var parent = searchResult.getParent();
       var insertedImage = parent.insertInlineImage(parent.getChildIndex(searchResult), blob);
 
