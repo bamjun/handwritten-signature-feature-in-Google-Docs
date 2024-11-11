@@ -34,18 +34,40 @@ function getAllImageTitles(container) {
   var numChildren = container.getNumChildren();
   var titles = [];
 
+  // 컨테이너가 Body인 경우 getParagraphs()로 모든 단락 확인
+  if (container.getParagraphs) {
+    var paragraphs = container.getParagraphs();
+    for (var p = 0; p < paragraphs.length; p++) {
+      var paragraph = paragraphs[p];
+      var elements = paragraph.getNumChildren();
+      
+      for (var e = 0; e < elements; e++) {
+        var element = paragraph.getChild(e);
+        if (element.getType() === DocumentApp.ElementType.INLINE_IMAGE) {
+          if (title = element.getAltTitle()) {
+            titles.push(title);
+          }
+        }
+      }
+    }
+  }
+
+  // 기존 로직 유지
   for (var i = 0; i < numChildren; i++) {
     var child = container.getChild(i);
 
-    if (child.getType() === DocumentApp.ElementType.INLINE_IMAGE) {
-      var title = child.getAltTitle() || "(타이틀 없음)";
-      titles.push(title); // 이미지 타이틀 추가
+    if (child.getType() === DocumentApp.ElementType.INLINE_IMAGE || 
+        child.getType() === DocumentApp.ElementType.POSITIONED_IMAGE) {
+          if (title = child.getAltTitle()) {
+            titles.push(title);
+          }      
     } else if (child.getNumChildren && child.getNumChildren() > 0) {
-      // 하위 요소가 있는 경우 재귀적으로 탐색
       titles = titles.concat(getAllImageTitles(child));
     }
   }
-  return titles;
+  
+  // 중복 제거
+  return [...new Set(titles)];
 }
 
 
@@ -60,18 +82,19 @@ function initializeImages() {
     return;
   }
   
-  // 문서 내 이미지들을 빈 캔버스로 대체
-  replaceImagesByTitle(body, "이름", blob);
-  replaceImagesByTitle(body, "주민등록번호", blob);
-  replaceImagesByTitle(body, "연락처", blob);
-  replaceImagesByTitle(body, "주소", blob);
-  replaceImagesByTitle(body, "정산계좌/예금주", blob);
+  // 모든 이미지 타이틀 가져오기
+  var imageTitles = getAllImageTitles(body);
+  
+  // 각 타이틀에 대해 이미지 교체 실행
+  imageTitles.forEach(function(title) {
+    replaceImagesByTitle(body, title, blob);
+  });
 }
 
 function createEmptyCanvasBlob() {
   // 10x10 크기의 빈 흰색 이미지의 base64 데이터
   const scriptProperties = PropertiesService.getScriptProperties();
-  var base64Data = scriptProperties.getProperty("white-blob");;
+  var base64Data = scriptProperties.getProperty("white-blob");
   return Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'empty.png');
 }
 
@@ -81,7 +104,8 @@ function replaceImagesByTitle(container, targetTitle, blob) {
   for (var i = 0; i < numChildren; i++) {
     var child = container.getChild(i);
 
-    if (child.getType() === DocumentApp.ElementType.INLINE_IMAGE) {
+    if (child.getType() === DocumentApp.ElementType.INLINE_IMAGE || 
+        child.getType() === DocumentApp.ElementType.POSITIONED_IMAGE) {
       var childTitle = child.getAltTitle();
       
       if (childTitle === targetTitle) {
@@ -91,12 +115,17 @@ function replaceImagesByTitle(container, targetTitle, blob) {
 
         // 새로운 "init" 이미지 삽입
         var parent = child.getParent();
-        var insertedImage = parent.insertInlineImage(parent.getChildIndex(child), blob);
+        var insertedImage;
+        if (child.getType() === DocumentApp.ElementType.POSITIONED_IMAGE) {
+          insertedImage = parent.insertPositionedImage(parent.getChildIndex(child), blob);
+        } else {
+          insertedImage = parent.insertInlineImage(parent.getChildIndex(child), blob);
+        }
 
         // 삽입된 이미지 크기와 타이틀 설정
         insertedImage.setWidth(originalWidth);
         insertedImage.setHeight(originalHeight);
-        insertedImage.setAltTitle(targetTitle); // 원래 타이틀 유지
+        insertedImage.setAltTitle(targetTitle);
 
         // 기존 이미지 제거
         parent.removeChild(child);
